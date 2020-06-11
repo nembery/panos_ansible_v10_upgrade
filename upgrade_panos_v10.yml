@@ -17,6 +17,7 @@
 
   tasks:
     - name: Ensure deps are avabilable
+      # Ensure we have all the right requirements installed in this environment
       pip:
         name:
           - pan-python
@@ -26,6 +27,8 @@
           - requests_toolbelt
 
     - name: Show System Info
+      # Grab the system info to determine current sw-version
+      # this will also wait for the device to come on-line
       panos_op:
         provider: '{{ provider }}'
         cmd: 'show system info'
@@ -40,6 +43,7 @@
       debug: msg="Current Version is {{ system_info_json.response.result.system['sw-version'] }} "
 
     - name: Activate my authcode
+      # This firewall must be licensed to pull dynamic content and software updates
       panos_lic:
         provider: '{{ provider }}'
         auth_code: '{{ auth_code }}'
@@ -49,6 +53,7 @@
         msg: 'Serial number is {{ result.serialnumber }}'
 
     - name: Wait for Reboot if necessary
+      # Installing a license will cause pan software to restart, again wait for a positive API call
       panos_op:
         provider: '{{ provider }}'
         cmd: 'show system info'
@@ -60,6 +65,7 @@
     - set_fact: system_info_json="{{ system_info.stdout | from_json }}"
 
     - name: Check latest content
+      # Get an updated dynamic content list
       panos_op:
         provider: '{{ provider }}'
         cmd: 'request content upgrade check'
@@ -67,6 +73,7 @@
       changed_when: false
 
     - name: Download latest content
+      # Download the latest version
       panos_op:
         provider: '{{ provider }}'
         cmd: |
@@ -77,6 +84,7 @@
       register: download
 
     - name: Check content download result
+      # wait for this job to finish
       panos_op:
         provider: '{{ provider }}'
         cmd: 'show jobs id {{ (download.stdout | from_json).response.result.job }}'
@@ -86,6 +94,7 @@
       delay: 60
 
     - name: Install latest content
+      # Content is downloaded and ready, now install it
       panos_op:
         provider: '{{ provider }}'
         cmd: |
@@ -96,6 +105,7 @@
       register: install
 
     - name: Check content install result
+      # again, wait for job to complete
       panos_op:
         provider: '{{ provider }}'
         cmd: 'show jobs id {{ (install.stdout | from_json).response.result.job }}'
@@ -105,6 +115,7 @@
       delay: 60
 
     - name: Download PAN-OS 9.0.0 base image only
+      # If current version is less than 9.0, download 9.0 base image
       panos_software:
         provider: '{{ provider }}'
         version: '9.0.0'
@@ -114,15 +125,17 @@
         system_info_json.response.result.system['sw-version'] is version('9.0.0', '<')
 
     - name: Install PAN-OS 9.0.8
+      # if current version is less than 9.0.8, then do an upgrade, with no restart
       panos_software:
         provider: '{{ provider }}'
         version: '9.0.8'
         install: true
-        restart: false
+        restart: false # fixme - we may need a reboot and wait cycle here as well
       when: |
         system_info_json.response.result.system['sw-version'] is version('9.0.8', '<')
 
     - name: Download PAN-OS 9.1.0 base image only
+      # if current version is less than 9.1.0, download 9.1 base image
       panos_software:
         provider: '{{ provider }}'
         version: '9.1.0'
@@ -132,15 +145,17 @@
         system_info_json.response.result.system['sw-version'] is version('9.1.0', '<')
 
     - name: Install PAN-OS 9.1.2-h1
+      # if current version is less than 9.1.2-h1
       panos_software:
         provider: '{{ provider }}'
         version: '9.1.2-h1'
         install: true
         restart: true
       when: |
-        system_info_json.response.result.system['sw-version'] is version('9.1.2-h2', '<')
+        system_info_json.response.result.system['sw-version'] is version('9.1.2-h1', '<')
 
     - name: Wait for Reboot if necessary
+      # wait for device to come back online
       panos_op:
         provider: '{{ provider }}'
         cmd: 'show system info'
@@ -152,6 +167,7 @@
     - set_fact: system_info_json="{{ system_info.stdout | from_json }}"
 
     - name: import beta software upgrade image into PAN-OS
+      # upload our local software image file (this cannot be downloaded directly)
       panos_import:
         ip_address: '{{ ip_address }}'
         username: '{{ username }}'
@@ -160,6 +176,7 @@
         category: software
 
     - name: Install target PAN-OS version
+      # install the beta code here, do not attempt download and go ahead and reboot
       panos_software:
         provider: '{{ provider }}'
         version: '{{ panos_beta_version }}'
@@ -171,17 +188,7 @@
       pause:
         seconds: 30
 
-    - name: Check to see if device is ready
-      panos_op:
-        provider: '{{ provider }}'
-        cmd: 'show chassis-ready'
-      changed_when: false
-      register: result
-      until: result is not failed and (result.stdout | from_json).response.result == 'yes'
-      retries: 30
-      delay: 60
-
-    - name: Update System Information
+    - name: Final Reboot Cycle
       panos_op:
         provider: '{{ provider }}'
         cmd: 'show system info'
@@ -191,4 +198,4 @@
       delay: 60
 
     - name: Display new software rev
-      debug: msg="Softare is now {{ system_info_json.response.result.system['sw-version'] }}"
+      debug: msg="Softare is now {{ (system_info.stdout | from_json).response.result.system['sw-version'] }}"

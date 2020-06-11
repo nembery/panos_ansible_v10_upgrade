@@ -5,6 +5,7 @@
   vars:
     panos_beta_version: '9.2.0-b46'
     panos_image_path: /tmp/PanOS_vm-9.2.0-b46
+    auth_code: 'your valid VM Auth-Code if unlicensed'
 
     provider:
       ip_address: '{{ ip_address }}'
@@ -25,6 +26,22 @@
       delay: 60
 
     - set_fact: system_info_json="{{ system_info.stdout | from_json }}"
+
+    - name: request license information
+      panos_op:
+        provider: '{{ provider }}'
+        cmd: "request license info"
+      register: license_info
+
+    - name: License info debug
+      debug: msg='{{ license_info.stdout | from_json }}'
+
+    - name: request license
+      panos_op:
+        provider: '{{ provider }}'
+        cmd: "request license fetch auth-code {{ auth_code }}"
+      register: result
+      when:  (license_info.stdout | from_json).response.result.licenses is none
 
     - name: Check latest content
       panos_op:

@@ -1,5 +1,6 @@
-- hosts: '{{ target_ip }}'
+- hosts: all
   connection: local
+  gather_facts: false
 
   vars:
     panos_beta_version: '9.2.0-b46'
@@ -30,7 +31,7 @@
         provider: '{{ provider }}'
         cmd: 'request content upgrade check'
       register: check
-      changed_when: False
+      changed_when: false
 
     - name: Download latest content
       panos_op:

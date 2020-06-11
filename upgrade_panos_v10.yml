@@ -16,6 +16,13 @@
     - paloaltonetworks.panos
 
   tasks:
+    - name: Ensure deps are avabilable
+      pip:
+        name:
+          - pan-python
+          - pandevice
+          - xmltodict
+
     - name: Show System Info
       panos_op:
         provider: '{{ provider }}'
@@ -27,21 +34,25 @@
 
     - set_fact: system_info_json="{{ system_info.stdout | from_json }}"
 
-    - name: request license information
-      panos_op:
+    - name: Activate my authcode
+      panos_lic:
         provider: '{{ provider }}'
-        cmd: "request license info"
-      register: license_info
-
-    - name: License info debug
-      debug: msg='{{ license_info.stdout | from_json }}'
-
-    - name: request license
-      panos_op:
-        provider: '{{ provider }}'
-        cmd: "request license fetch auth-code {{ auth_code }}"
+        auth_code: '{{ auth_code }}'
       register: result
-      when:  (license_info.stdout | from_json).response.result.licenses is none
+
+    - debug:
+        msg: 'Serial number is {{ result.serialnumber }}'
+
+    - name: Wait for Reboot if necessary
+      panos_op:
+        provider: '{{ provider }}'
+        cmd: 'show system info'
+      register: system_info
+      until: system_info is not failed
+      retries: 30
+      delay: 60
+
+    - set_fact: system_info_json="{{ system_info.stdout | from_json }}"
 
     - name: Check latest content
       panos_op:

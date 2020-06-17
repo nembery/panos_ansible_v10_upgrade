@@ -51,7 +51,7 @@
 
     - name: Pause for restart
       pause:
-        seconds: 30
+        seconds: 180
       when: activate_authcode.changed
 
     - name: Wait for Reboot if necessary

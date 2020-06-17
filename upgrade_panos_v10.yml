@@ -47,10 +47,12 @@
       panos_lic:
         provider: '{{ provider }}'
         auth_code: '{{ auth_code }}'
-      register: result
+      register: activate_authcode
 
-    - debug:
-        msg: 'Serial number is {{ result.serialnumber }}'
+    - name: Pause for restart
+      pause:
+        seconds: 30
+      when: activate_authcode.changed
 
     - name: Wait for Reboot if necessary
       # Installing a license will cause pan software to restart, again wait for a positive API call
@@ -63,6 +65,9 @@
       delay: 60
 
     - set_fact: system_info_json="{{ system_info.stdout | from_json }}"
+
+    - debug:
+        msg: 'Serial number is {{ system_info_json.response.result.system['serialnumber'] }}'
 
     - name: Check latest content
       # Get an updated dynamic content list
@@ -152,7 +157,7 @@
         install: true
         restart: true
       when: |
-        system_info_json.response.result.system['sw-version'] is version('9.1.2-h1', '<')
+        system_info_json.response.result.system['sw-version'] is version('9.1.0', '<')
 
     - name: Wait for Reboot if necessary
       # wait for device to come back online

@@ -67,7 +67,7 @@
     - set_fact: system_info_json="{{ system_info.stdout | from_json }}"
 
     - debug:
-        msg: 'Serial number is {{ system_info_json.response.result.system['serialnumber'] }}'
+        msg: "Serial number is {{ system_info_json.response.result.system['serialnumber'] }}"
 
     - name: Check latest content
       # Get an updated dynamic content list

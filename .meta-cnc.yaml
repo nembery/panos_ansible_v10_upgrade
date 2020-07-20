@@ -28,7 +28,7 @@ variables:
 
 snippets:
   - name: panos_v10_upgrade
-    image: paloaltonetworks/pantools
+    image: nembery/pantools:min
     cmd: |
       ansible-playbook -i inventory.yml upgrade_panos_v10.yml
       -e 'auth_code="{{ auth_code }}"'

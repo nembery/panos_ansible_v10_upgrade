@@ -1,0 +1,35 @@
+name: panos_upgrade_v10
+label: PAN-OS Upgrade to version 10.0.0
+description: |
+  Ansible playbook to upgrade a newly deployed firewall to PAN-OS Version 10.0.0
+
+type: docker
+
+labels:
+  collection: Example Skillets
+
+variables:
+  - name: ip_address
+    description: Host IP Address
+    default: 10.0.0.1
+    type_hint: ip_address
+  - name: username
+    description: Host Username
+    default: admin
+    type_hint: text
+  - name: password
+    description: Host Password
+    default:
+    type_hint: password
+  - name: auth_code
+    description: Auth Code
+    default: IABCDEF
+    type_hint: text
+
+snippets:
+  - name: panos_v10_upgrade
+    image: paloaltonetworks/pantools
+    cmd: |
+      ansible-playbook -i inventory.yml upgrade_panos_v10.yml
+      -e 'auth_code="{{ auth_code }}"'
+      -e '{"provider": {"ip_address": "{{ ip_address }}", "username": "{{ username }}", "password": "{{ password }}"}}'

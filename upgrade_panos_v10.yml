@@ -3,8 +3,6 @@
   gather_facts: false
 
   vars:
-    panos_beta_version: '9.2.0-b46'
-    panos_image_path: /tmp/PanOS_vm-9.2.0-b46
     auth_code: 'your valid VM Auth-Code if unlicensed'
 
     provider:
@@ -49,7 +47,7 @@
         auth_code: '{{ auth_code }}'
       register: activate_authcode
 
-    - name: Pause for restart
+    - name: Pause for Service Restart
       pause:
         seconds: 180
       when: activate_authcode.changed
@@ -151,15 +149,15 @@
       when: |
         system_info_json.response.result.system['sw-version'] is version('9.1.0', '<')
 
-    - name: Install PAN-OS 9.1.2-h1
+    - name: Install PAN-OS 9.1.3-h1
       # if current version is less than 9.1.2-h1
       panos_software:
         provider: '{{ provider }}'
-        version: '9.1.2-h1'
+        version: '9.1.3-h1'
         install: true
         restart: true
       when: |
-        system_info_json.response.result.system['sw-version'] is version('9.1.0', '<')
+        system_info_json.response.result.system['sw-version'] is version('9.1.3', '<')
 
     - name: Wait for Reboot if necessary
       # wait for device to come back online
@@ -173,23 +171,15 @@
 
     - set_fact: system_info_json="{{ system_info.stdout | from_json }}"
 
-    - name: import beta software upgrade image into PAN-OS
-      # upload our local software image file (this cannot be downloaded directly)
-      panos_import:
-        ip_address: '{{ ip_address }}'
-        username: '{{ username }}'
-        password: '{{ password }}'
-        file: '{{ panos_image_path }}'
-        category: software
-
-    - name: Install target PAN-OS version
-      # install the beta code here, do not attempt download and go ahead and reboot
+    - name: Install PAN-OS 10.0.0
+      # if current version is less than 10.0.0
       panos_software:
         provider: '{{ provider }}'
-        version: '{{ panos_beta_version }}'
-        download: false
+        version: '10.0.0'
         install: true
         restart: true
+      when: |
+        system_info_json.response.result.system['sw-version'] is version('10.0.0', '<')
 
     - name: Pause for restart
       pause:
